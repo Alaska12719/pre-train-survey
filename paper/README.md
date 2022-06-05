@@ -71,6 +71,10 @@ other knowledge enhanced: 通过联合训练知识和序列或从所提供的语
 
 ---
 
+#### 4.2.1.1 Entity Feature Fused KEPTMs
+
+---
+
 **[SenseBERT](./knowledge%20injection/classical%20paper/SenseBERT%20Driving%20Some%20Sense%20into%20BERT.pdf):** 在词义层面应用自监督，显著提升词义消歧能力，在复杂的 Word in Context (WiC) 语言任务中取得了当前最优结果。
 
 Method: 添加一个掩蔽词义预测任务作为辅助任务，添加了一个专家构建的外部知识库WordNet，训练模型除了预测mask的单词本身以外，还要预测单词的语义，这是一个分类任务。WordNet把词语分成了45个超类，并且把类别映射到和word embedding同样的空间。
@@ -80,10 +84,10 @@ Method: 添加一个掩蔽词义预测任务作为辅助任务，添加了一个
 评价：起到了一定的消除歧义作用，但把词语的SuperSense分为45类，这样的知识库形式过于简单，如果复杂知识嵌入可能难以参考借鉴。并且，S直接映射到和word同样的空间，把S和W值相加，会不会降低了可解释性。
 
 ---
+
 **[SemtiLARE](./knowledge%20injection/classical%20paper/SentiLARE%20Sentiment-Aware%20Language%20Representation%20Learning%20with%20Linguistic%20Knowledge.pdf):** 解决细粒度的情感分类，引入单词级别的语言学外部知识，通过标签感知的MLM任务为BERT注入情绪极性及其词性。
 
 Method: 和上面那个研究很像，只不过这次加入的是单词级别的情感编码。通过一个词在这个句子中的词性和上下文，可以得到一个对这个词在此处情感的打分，最终标记为positive/negative/neutral，也就是极性。然后把词性的编码和极性的编码都加入到embedding中，预测的时候也是预测单词、词性、极性三样，loss相加。
-
 
 ![](./image/README/SentiLARE.png)
 
@@ -91,4 +95,83 @@ Method: 和上面那个研究很像，只不过这次加入的是单词级别的
 
 ---
 
+#### 4.2.1.2 Knowledge Graph Supervised Pre-trained Models
 
+---
+
+**[WKLM](./knowledge%20injection/classical%20paper/WKLM%20Pretrained%20Encyclopedia%20Weakly%20Supervised%20Knowledge-Pretrained%20Language%20Model.pdf):** 为了直接从非结构文本中提取真实世界的知识，WKLM设计了基于实体替换检测的弱监督学习模型，迫使模型合并真实世界实体的知识。
+
+Method: 对于输入的文本，首先识别实体并且把他们链接到维基百科的实体上，这个可以看作正例。然后随机把实体替换成同样类型的其他实体。这种思路类似于三元组中的负采样技术，不过这里知识来源于非结构化的文本，预测任务是判断这个实体是否被替换过。
+
+![](./image/README/WKLM.png)
+
+评价：这里被综述的作者归类于Knowledge Graph Supervised Pre-trained Models，是因为这里不是以实体为核心直接从知识库中抽取特征，而是把知识库作为采样的来源做监督学习，间接地融入知识。文章的出发点应该是提高entity的预测难度，想给entity融入更多的上下文信息。
+
+但是我猜测可能有三个不足，一是同名的实体会不会有多种含义，比如人名，二是会不会有虚假的相关性，比如奥巴马是美国总统，随机替换为特朗普，语义上依旧正确，但根据负采样结果为False。三是貌似没有利用Wikipedia的link之间组成的网络关系。
+
+---
+
+**[LIBERT](./knowledge%20injection/classical%20paper/LIBERT%20Specializing%20unsupervised%20pretraining%20models%20for%20word-level%20semantic%20similarity.pdf):** 和WKLM思路相似，都是把外部知识库当做监督学习的数据来源，而非直接embedding。和WKLM不同的是，LIBERT使用的不是单个实体，而是预测一对实体的语义是否相似。
+
+Method: 除了MLM和NSP两个任务，增加了一个LRC任务（语义关系分类）。使用WordPiece分割每个词，然后每个片段分别做segment embedding和position embedding，通过一个简单线性层+softmax分类，判别是否是同义词或者上下位词。
+
+![](./image/README/LIBERT.png)
+
+评价：只与based bert进行了对比，说明增加的预训练任务是有效的，缺乏与其他预训练的比较，不知道实际效果如何。感觉本质上其实和WKLM差不多，甚至可能不如WKLM，因为这里只是作为额外输入单纯地加了一个判断两词关系，反而失去了句子中上下文的信息。
+
+但这个工作给我们一点启示是，只要更新的embedding可以对齐，我们的预训练任务、甚至输入的数据，都可以是完全独立的。以及这里面也用到了wordpiece，大胆猜想中文上是否有类似的工作，考虑偏旁和部首去预测语义。
+
+---
+
+**[GLM](./knowledge%20injection/classical%20paper/GLM%20Exploiting%20structured%20knowledge%20in%20text%20via%20graph-guided%20representation%20learning.pdf):** 这篇工作摆脱了提取实体语义相似性的思路，而是转而在知识图的指导下，捕捉文本中实体的隐含关系，比直接从连接的图三元组中学习的方法更有效地进行泛化。
+
+Method: 提出一种新的采样技术和一个的预训练任务DSR(DISTRACTOR-SUPPRESSED RANKING TASK)。从KG中根据隐含的关系信息进行采样和mask，排除随机采样出现的无意义词汇（比如what do）和在图中难以到达的词汇，这样负采样出来的词更加接近原词，但具体语境中含义不同，可以学到更加微妙的表达和知识。采样的概率和这个实体在文档中出现的次数以及在KG中与这个实体的距离有关。除了MLM之外，DSR任务还要预测正实体和负实体与原句表示的相似性。
+
+$H$是一堆词$w$经过TransformerEncoder之后的表示，则
+MLM的损失是：
+
+$$
+\mathcal{L}_{M}=-\frac{1}{|\mathcal{M}|}\sum_{i \in \mathcal{M}}logP(w_i|H_{:,i})
+$$
+
+$v_j$是出现实体$e_j$的句子的表示的平均值，$u_j$是positive entity前面加[CLS]后面加[ENT]的嵌入，$u^{'}_j$是negative entity前面加[CLS]后面加[ENT]的嵌入。然后用单层网络映射来比较$v$和两个$u$的相似性，分别记为$s_j$和$s_j^{'}$,下面是损失函数。
+
+$$
+\mathcal{L}_R=\frac{1}{m}\sum_{j=1}^{m}\max(\lambda-s_j+s_j^{'},0)
+$$
+
+总的损失函数：
+
+$$
+\mathcal{L}=\mathcal{L_M}+\gamma\mathcal{L_R}
+$$
+
+评价：仅靠不随机选取negative entity而是根据KG随机选取，一定程度上是可以采到语义更相似的词汇，但为什么不通过其他模型embedding好的空间相似性去采样，而要通过KG呢？这样是否有效利用了link的关系呢？
+
+---
+
+### 4.2.2 Triplet Enhanced Pre-trained Models
+
+---
+
+#### 4.2.2.1 Coupled-based KEPTMs
+
+---
+
+**[ERNIE](./knowledge%20injection/classical%20paper/Ernie%20Enhanced%20language%20representation%20with%20informative%20entities.pdf):** 这个模型充分利用词汇、句法和知识信息，将预先训练好的实体嵌入与文中的实体集成在一起，在实体类型和关系预测上达到了最优。
+
+Method: 首先要提取知识。KG是类似于TransE等知识嵌入算法编码的，而不是直接的图结构。在文本中识别出KG中包含的实体并且与KG中的实体对齐融合，作为ERNIE的输入，所以KG中的实体表示就集成到语义模块中了。
+
+接下来增加一个预训练任务denoising entity auto-encoder (DEA)：随机mask一些命名实体，要求模型聚合上下文和KG的信息，去预测token和entity，从而获得知识增强的语言表示模型。
+
+![](./image/README/ERNIE.png)
+
+评价：优点是通过K-Encoder巧妙地融合了entity和token。不过不懂的是，作为一个整体的实体为何不学习其整体表示，而要分成多个token呢。
+
+---
+
+**[KnowBERT](./knowledge%20injection/classical%20paper/KnowBERT%20Knowledge%20enhanced%20contextual%20Word%20Representations.pdf):** 和一个实体链接模型端到端地联合学习实体的表示，从而把事实融入到实体中。
+
+![](./image/README/KnowBERT.png)
+
+**[BERT-MK](./knowledge%20injection/classical%20paper/BERT-MK%20Integrating%20graph%20contextualized%20knowledge%20into%20pretrained%20language%20models.pdf):** 
