@@ -179,6 +179,7 @@ Method: 简单来说，就是输入一个句子，先得到句子中每个词的
 评价：弥补了之前WKLM中实体可能有多重含义的不足，考虑了更多的相关实体。但知识库中各个节点还是分散的，只考虑entity和span直接的关联，但忽略了span与span之间的关联。
 
 ---
+
 **[BERT-MK](./knowledge%20injection/classical%20paper/BERT-MK%20Integrating%20graph%20contextualized%20knowledge%20into%20pretrained%20language%20models.pdf):** 相比上一个模型，考虑了知识库中三元组的联系，捕捉了更丰富的语义。这个工作主要是利用到了实体和关系的上下文表示知识，在理论上支持从知识图中提取的任何子图，并将这些子图输入一个新的基于Transformer的模型来学习知识嵌入。结果好于BERT-base、BioBERT和SCIBERT。
 
 Method: KG-Transformer使用基于Transformer的模型学习结点的表示，通过重建三元组的任务，获得结点的embedding，从而把知识子图转换为一系列结点。因此，给出一个全面的医学知识图，KG-Transformer就可以学习图上的知识，这些知识可以用于提升预训练语言模型的效果。
@@ -190,6 +191,7 @@ Method: KG-Transformer使用基于Transformer的模型学习结点的表示，�
 评价：考虑实体与实体之间的关系的意思就是使用一个重建三元组的任务，并且提出来一种将图的信息编码到结点信息的方式，相当于统一了基于图结构的方法和基于实体的知识增强方法。
 
 ---
+
 **[KT-NET](./knowledge%20injection/classical%20paper/KT-NET%20Enhancing%20pre-trained%20language%20representations%20with%20rich%20knowledge%20for%20machine%20reading%20comprehension.pdf):** 阅读理解不仅要求机器具备语言理解的能力，还要求机器具备知识以支撑复杂的推理。普通bert无法预测正确答案，但结合了WordNet和NELL的知识之后就可以了。KT-NET采用了注意力机制，自适应地从KG中选择所需的知识并且与BERT进行融合。
 
 Method: 首先，采用[knowledge graph embedding](./knowledge%20injection/classical%20paper/Embedding%20entities%20and%20relations%20for%20learning%20and%20inference%20in%20knowledge%20bases.pdf)学习KB中概念的向量表示。然后，给定一个问题和一个段落，用BERT计算嵌入，并从WordNet和NELL检索潜在相关实体，将实体嵌入与上下文表示集成。通过自匹配层，让token与实体充分交互，从而融合两种表示，输出一个token作为开始位置和结束位置的概率。
@@ -199,6 +201,7 @@ Method: 首先，采用[knowledge graph embedding](./knowledge%20injection/class
 评价：创新主要在于self-matching层，从知识图中提取知识到结点的方法好处在于不只提取了local的信息，还提取了global的信息。但这个预测的目标是开始和结束，是不是作为QA有些简单？不太懂QA一般是怎么做的。
 
 ---
+
 **[KGLM](./knowledge%20injection/classical%20paper/KGLM%20Using%20knowledge%20graphs%20for%20fact-aware%20language%20modeling.pdf):** 为了给生成任务提供事实知识，KGLM被构建为从本地KG生成的信息。这个本地KG是通过外部KG的上下文选择和事实来动态构建的。
 
 Method: KGLM用循环结构把输入序列编码为三部分：$h_{t,x}$，$h_{t,h}$，$h_{t,r}$。$h_{t,x}$决定在已经存在的local KG、词汇表和外部KG中下一个词的来源。$h_{t,h}$和$h_{t,r}$被用于在从外部KG中生成词时进一步选择相关实体。一旦一个实体被选中，相关的三元组就会加入到本地KG中去拓宽候选集的范围。如果下一个词的来源在本地KG中，生成词需要从本地KG去找。
@@ -207,9 +210,48 @@ Method: KGLM用循环结构把输入序列编码为三部分：$h_{t,x}$，$h_{t
 
 评价：这个工作没有考虑注意力机制，也没有用Transformer，而是使用了传统的LSTM去捕捉序列信息。而且不明白为什么不一开始直接把信息全部加入，而要逐步构建一个local KG。
 
+思考：knowledge injection是否相当于condition language model？
+
 ---
+
+#### 4.2.2.2 Data Structure Unified KEPTMs
+
+---
+
 **[Guan et al.](./knowledge%20injection/classical%20paper/A%20knowledge-enhanced%20pretraining%20model%20for%20commonsense%20story%20generation.pdf):** 之前的模型都是知识和实体分别表示再融合的，这里把三元组转成文本，基于GPT进行多任务学习。这个模型把ConcepteNet和ATOMIC转成了可读的自然语言句子，并且通过LM任务，也即根据前面的词预测下一个词的任务，进行训练。CLS分类任务用来区分真实故事和通过一些方法自动构建的假故事，使得模型捕捉句子之间一定的因果和依赖。在真实的故事上优化LM损失，在真实和虚假的故事上优化CLS损失。
 
-评价：基于模板把三元组转换成自然语言，但因为这里是LM任务，单向预测不一定能很好地捕捉到知识库的信息，且和故事是分开训练的，不一定可以融合的很好。如果可以和故事结合起来，抽取故事相关的实体，或者改为双向语言模型，但生成的时候用单向生成的方式，可能结果会更好。
+评价：为了提升捕捉依赖和逻辑归因的能力而构造假故事，是个好想法。现在的假故事是手动构造的，但这里是否可以加入对抗呢？基于模板把三元组转换成自然语言，但因为这里是LM任务，单向预测不一定能很好地捕捉到知识库的信息，且和故事是分开训练的，不一定可以融合的很好。如果可以和故事结合起来，抽取故事相关的实体，或者改为双向语言模型，但生成的时候用单向生成的方式，可能结果会更好。
 
 ---
+
+**[KG-BERT](./knowledge%20injection/classical%20paper/KG-BERT%20BERT%20for%20Knowledge%20Graph%20Completion.pdf):** 提出了一种对三元组的语言表示方法,训练目标是判别三元组是正例还是负例、以及已知头和尾去预测关系。
+
+![](image/README/KG-BERT.png)
+
+![](image/README/KG-BERT2.png)
+
+评价：只是在基本的文本模型已经训练好的情况下，提出了一种fine-tune方法。而且方法也过于简单直接了。三元组这样表示，感觉没有充分利用实体的embedding以及之间丰富的网络关系，完全当语料数据来训练了。
+
+---
+
+**[StAR](./knowledge%20injection/classical%20paper/StAR_www2021.pdf):** 这篇文章的想法也是融合结构化信息和上下文信息。在文中提出了一种新颖的三元组表示方法，对于$head$和$relation$，表达为：
+
+$$
+u=Pool(TransformerEnc([x^{[CLS]},x^{[h]},x^{[SEP]},x^{[r]},x^{[SEP]}]))
+$$
+
+对于$tail$，表达为：
+
+$$
+u=Pool(TransformerEnc([x^{[CLS]},x^{[t]},x^{[SEP]}]))
+$$
+
+有两个任务，一是判断三元组是真实的还是负采样生成的，二是正例三元组和负例三元组的距离判断。
+
+![](./image/README/StAR.png)
+
+评价：疑问有二，一是这种表示三元组的方法道理在哪里，二是两个训练目标感觉得到的信息是相似的。所以，本文所谓的把文本和结构化结合，就仅仅是用Transformer把三元组当语言模型编码一下吗？需要继续思考KG的表示形式。
+
+---
+
+**[K-BERT]():**
