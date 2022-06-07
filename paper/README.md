@@ -254,4 +254,40 @@ $$
 
 ---
 
-**[K-BERT]():**
+**[K-BERT](./knowledge%20injection/classical%20paper/K-bert%20Enabling%20language%20representation%20with%20knowledge%20graph.pdf):** 之前的方法把文本和三元组都当做独立的训练数据，K-BERT构建了知识丰富的句子树，把序列与相关的三元组连接起来，在fine-tune的时候达到注入知识的效果。这个模型既方便加载bert参数，又方便知识注入，对计算资源有限的用户非常友好。
+
+Method: 从输入的句子中挑出所有实体，查询相关三元组，生成句子树。同时为了避免对文本编码干扰（控制知识噪音），采用soft-position和visible matrix控制知识的范围。
+
+![](image/README/K-BERT-architecture.png)
+
+下面是一棵树的表示，只扩展一次，不迭代扩展实体，因此深度为1。
+
+![](image/README/K-BERT.png)
+
+如何embedding一棵树而不是一句话是一个挑战，需要在token embedding、soft-position embedding、segment embedding三个方面寻找办法。token embedding方面，把加入的词插入到后面重新组成句子，soft-position保持原有位置号码不变，segment embedding和经典bert一样，一句话一个编码。
+
+![](image/README/K-BERT-embedding%20and%20visible%20matrix.png)
+
+Seeing layer主要是防止知识干扰，所以需要进行mask，限制知识影响的范围，让知识只能影响相关的entity。
+
+![](image/README/K-BERT-mask.png)
+
+评价：直观上更加符合人思考的过程，但这样好像缺少了知识图谱全局的表示，只利用了少数邻居节点，也无法捕捉实体之间的关联。
+
+---
+
+**[CoLAKE](./knowledge%20injection/classical%20paper/Colake%20Contextualized%20language%20and%20knowledge%20embedding.pdf):** 这个工作不再使用单独的三元组，而是通过重建单词知识图谱使用了融合了上下文的三元组，解决了上面的弊端。
+
+CoLAKE把序列转换成一个全连接图，并且为关于该实体的三元组的序列中的每个实体引出一个子图，之后通过对齐的实体替换全连通图中的实体来构建单词知识图。编码方式同K-BERT，也是visible matrix和soft-position来控制编码范围。
+
+相当于上面的是树，现在colake变成图了，更符合真实情况，并且捕捉了更多实体和三元组之间的关系。
+
+![Colake](image/README/CoLAKE.png)
+
+embedding的方式，输入的时候拼接在一起，给予特殊的type标签和mask，学习相关关系。
+
+![CoLAKE](image/README/CoLAKE2.png)
+
+---
+#### 4.2.2.3 Joint Training KEPTMs
+---
