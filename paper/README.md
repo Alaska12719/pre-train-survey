@@ -155,7 +155,9 @@ $$
 ---
 
 #### 4.2.2.1 Coupled-based KEPTMs
+
 ---
+
 ##### Embedding Combined KEPTMs
 
 ---
@@ -291,8 +293,11 @@ embedding的方式，输入的时候拼接在一起，给予特殊的type标签�
 ![CoLAKE](image/README/CoLAKE2.png)
 
 ---
+
 ##### Joint Training KEPTMs
+
 ---
+
 **[KEPLER](./knowledge%20injection/classical%20paper/Kepler%20A%20unified%20model%20for%20knowledge%20embedding%20and%20pretrained%20language%20representation.pdf):** 用文本描述通过encoder来代表entity的表示，用TransE来学习relation，将事实结构的信息整合到语言表示中。
 这个工作没有增加新的entity linker或者knowledge integration layers，可以方便地直接用RoBERTa的参数。
 
@@ -305,19 +310,23 @@ embedding的方式，输入的时候拼接在一起，给予特殊的type标签�
 $$
 h=E_{<s>}(text_h)
 $$
+
 $$
 t=E_{<s>}(text_t)
 $$
+
 $$
 r=T_r
 $$
+
 $$
 d_r(h,t)=||h+r-t||_p, \ which\  p = 1
 $$
+
 $$
 \mathcal{L}_{KE}=-log\sigma(\gamma-d_r(h,t))-\sum_{i=1}^{n}
-\frac{1}{n}log\sigma(d_r(h_i^{'},t_i^{'})-\gamma)$$
-
+\frac{1}{n}log\sigma(d_r(h_i^{'},t_i^{'})-\gamma)
+$$
 
 2. Entity and Relation Descriptions as Embeddings
 
@@ -332,9 +341,11 @@ h_r=E_{<s>}(text_{h,r})
 $$
 
 ---
+
 #### 4.2.2.2 Decoupled-based KEPTMs
 
 ---
+
 ##### Retrieval-based KEPTMs
 
 ---
@@ -344,14 +355,19 @@ $$
 ![](./image/README/FaE.png)
 
 ---
+
 ### 4.2.3 Other Knowledge Enhanced Pre-trained Models
 
 ---
+
 #### 4.2.3.1 Coupled-based KEPTMs
 
 ---
+
 ##### Joint Training KEPTMs
+
 ---
+
 **[K-ADAPTER](./knowledge%20injection/classical%20paper/K-adapter%20Infusing%20knowledge%20into%20pre-trained%20models%20with%20adapters.pdf):** 设计了一个适配器，存储各种注入的知识，保持原有的预训练模型参数不变，方便与各种知识做隔离，解决了灾难性遗忘的问题。
 语言模型和知识模型分别训练，然后再连接起来一起做下游任务。
 
@@ -360,11 +376,13 @@ $$
 评价：解决灾难性遗忘这个点很有创意，甚至可以轻松地切换各种知识域。
 
 ---
+
 **[REALM](./knowledge%20injection/classical%20paper/Realm%20Retrieval-augmented%20language%20model%20pre-training.pdf):** 训练一个隐含的知识提取器，允许模型从大语料库中检索相关的文档。模型有两个关键组件：一个是用bert的神经知识检索器，用来编码输入的数据和检索可能有用的文档。一个是用Transformer实现的知识增强编码器，它用于注入文档中的实体和预测回答问题的单词。
 
 ![](./image/README/realm.png)
 
 Method: 把$p(y|x)$分解成两步：检索$p(z|x)$和预测$p(y|z,x)$。把$z$当做一个隐含变量，在所有可能的文档$z$上计算：
+
 $$
 p(y|x) = \sum_{z \in \mathcal{Z}}p(y|z,x)p(z|x)
 $$
